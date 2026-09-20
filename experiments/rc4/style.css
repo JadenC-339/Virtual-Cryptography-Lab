@@ -405,3 +405,5 @@ input[type="text"]:focus, textarea:focus {
 .quiz-result.hidden {
     display: none;
 }
+
+.question-feedback { margin-top: 8px; font-size: 0.9rem; padding: 5px; border-radius: 4px; }

@@ -284,6 +284,21 @@ const quizQuestions = [
         question: "Who designed the RC4 algorithm?",
         options: ["Bruce Schneier", "Ron Rivest", "Whitfield Diffie", "Martin Hellman"],
         answer: 1
+    },
+    {
+        question: "In which wireless protocol is RC4 most notoriously used?",
+        options: ["WPA3", "IPsec", "WEP", "SSH"],
+        answer: 2
+    },
+    {
+        question: "What is the typical variable key length allowed by RC4?",
+        options: ["Exactly 128 bytes", "Fixed 256 bits", "1 to 256 bytes", "Unlimited"],
+        answer: 2
+    },
+    {
+        question: "In the KSA phase, the secondary array T is initialized using:",
+        options: ["The keystream", "The provided key", "Random numbers", "Only zeros"],
+        answer: 1
     }
 ];
 
@@ -317,6 +332,12 @@ function initQuiz() {
         });
 
         qDiv.appendChild(optionsList);
+
+        // Add feedback div
+        const feedbackDiv = document.createElement("div");
+        feedbackDiv.className = "question-feedback hidden";
+        qDiv.appendChild(feedbackDiv);
+
         quizContainer.appendChild(qDiv);
     });
 
@@ -324,12 +345,11 @@ function initQuiz() {
         let score = 0;
         let allAnswered = true;
 
+        // Verify if all questions are answered
         quizQuestions.forEach((q, index) => {
             const selected = document.querySelector(`input[name="question${index}"]:checked`);
             if (!selected) {
                 allAnswered = false;
-            } else if (parseInt(selected.value) === q.answer) {
-                score++;
             }
         });
 
@@ -339,11 +359,31 @@ function initQuiz() {
             resDiv.style.backgroundColor = "#fff3cd";
             resDiv.style.color = "#856404";
             resDiv.textContent = "Please answer all questions before submitting.";
-        } else {
-            resDiv.className = "quiz-result success";
-            resDiv.style.backgroundColor = ""; // let css handle success state
-            resDiv.style.color = "";
-            resDiv.textContent = `You scored ${score} out of ${quizQuestions.length}!`;
+            return;
         }
+
+        const qDivs = document.querySelectorAll(".quiz-question");
+
+        quizQuestions.forEach((q, index) => {
+            const selected = document.querySelector(`input[name="question${index}"]:checked`);
+            const feedbackDiv = qDivs[index].querySelector(".question-feedback");
+            feedbackDiv.classList.remove("hidden");
+
+            if (parseInt(selected.value) === q.answer) {
+                score++;
+                feedbackDiv.textContent = "Correct!";
+                feedbackDiv.style.color = "green";
+                feedbackDiv.style.backgroundColor = "#d4edda";
+            } else {
+                feedbackDiv.innerHTML = `Incorrect. The correct answer is: <strong>${q.options[q.answer]}</strong>`;
+                feedbackDiv.style.color = "#721c24";
+                feedbackDiv.style.backgroundColor = "#f8d7da";
+            }
+        });
+
+        resDiv.className = "quiz-result success";
+        resDiv.style.backgroundColor = ""; // let css handle success state
+        resDiv.style.color = "";
+        resDiv.textContent = `You scored ${score} out of ${quizQuestions.length}!`;
     });
 }
