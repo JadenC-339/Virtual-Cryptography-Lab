@@ -70,28 +70,18 @@
                     <h2>Relevant Theoretical Concepts</h2>
                     <div class="card">
                         <h3>What is RC4?</h3>
-                        <p>RC4 (Rivest Cipher 4) is a stream cipher, designed by Ron Rivest in 1987. It is known for its
-                            simplicity and speed in software applications. Rather than processing data in fixed blocks,
-                            a stream cipher encrypts data one byte at a time.</p>
+                        <p>RC4 is a symmetric stream cipher and variable-length key algorithm. This algorithm encrypts
+                            one byte at a time (or larger units at a time). A key input is a pseudorandom bit generator
+                            that produces a stream 8-bit number that is unpredictable without knowledge of the input
+                            key. The output of the generator is called the key-stream, which is combined one byte at a
+                            time with the plaintext stream cipher using the XOR operation. It was designed by Ron Rivest
+                            for RSA Security in 1987.</p>
 
-                        <h3>The Two Phases of RC4:</h3>
-                        <h4>1. Key-Scheduling Algorithm (KSA)</h4>
-                        <p>The KSA is used to initialize the permutation in the array <code>S</code>. "Keylength" is
-                            defined as the number of bytes in the key and can be in the range 1 ≤ keylength ≤ 256,
-                            typically between 5 and 16, corresponding to a key length of 40-128 bits. First, the array
-                            <code>S</code> is initialized to the identity permutation. <code>S[i] = i</code> for all
-                            <code>i</code> from 0 to 255. A secondary array <code>T</code> is also initialized using the
-                            provided key.</p>
-                        <p>Then, the array <code>S</code> is processed for 256 iterations in a way that is determined by
-                            the key.</p>
-
-                        <h4>2. Pseudo-Random Generation Algorithm (PRGA)</h4>
-                        <p>Once the array <code>S</code> has been initialized from the key, the KSA is completed. The
-                            PRGA starts taking over and generates sequence of random bits, extracting pseudo-random
-                            keystream bytes until the full length of the plaintext has been reached.</p>
-                        <p>For operations, RC4 uses an XOR operation between the keystream bytes generated and the
-                            plaintext to produce ciphertext. Since XOR is its own inverse, exactly the same operation is
-                            applied for decryption.</p>
+                        <h3>Applications</h3>
+                        <p>RC4 is used in the Secure Socket Layer (SSL)/Transport Layer Security (TLS) standards defined
+                            for communication between Web browsers and Servers. It is also used in the Wired Equivalent
+                            Privacy (WEP) protocol and the newer WiFi Protected Access (WPA) protocol that are part of
+                            the IEEE 802.11 wireless LAN standard.</p>
                     </div>
                 </section>
 
@@ -99,36 +89,57 @@
                 <section class="content-section" id="procedure">
                     <h2>Step-by-Step Procedure</h2>
                     <div class="card">
-                        <h3>1. Key Scheduling Algorithm (KSA)</h3>
-                        <ol>
-                            <li>Initialize an array `S` of size 256, where <code>S[i] = i</code> for <code>i = 0</code>
-                                to <code>255</code>.</li>
-                            <li>Initialize an array `T` of size 256. If the key length is 256 bytes, copy the key
-                                completely into <code>T</code>. If the key is shorter, copy the key repeatedly into
-                                <code>T</code> until <code>T</code> is filled.</li>
-                            <li>Set index <code>j = 0</code>.</li>
-                            <li>For <code>i = 0</code> to <code>255</code> do:
-                                <ul>
-                                    <li><code>j = (j + S[i] + T[i]) mod 256</code></li>
-                                    <li>Swap the values of <code>S[i]</code> and <code>S[j]</code>.</li>
-                                </ul>
-                            </li>
-                        </ol>
+                        <h3>1. Key-Generation Algorithm (KSA)</h3>
+                        <p>A variable-length key from 1 to 256 bytes is used to initialize a 256-byte state vector
+                            <code>S</code>, with elements <code>S[0]</code> to <code>S[255]</code>. <code>S</code>
+                            contains a permutation of all 8-bit numbers from 0 through 255. For encryption and
+                            decryption, a byte <code>k</code> is generated from <code>S</code> by selecting one of the
+                            255 entries in a systematic fashion, then the entries in <code>S</code> are permuted again.
+                        </p>
 
-                        <h3>2. Pseudo-Random Generation Algorithm (PRGA)</h3>
-                        <ol>
-                            <li>Initialize indices <code>i = 0</code> and <code>j = 0</code>.</li>
-                            <li>For each byte of plaintext, do:
-                                <ul>
-                                    <li><code>i = (i + 1) mod 256</code></li>
-                                    <li><code>j = (j + S[i]) mod 256</code></li>
-                                    <li>Swap the values of <code>S[i]</code> and <code>S[j]</code>.</li>
-                                    <li>Calculate index <code>t = (S[i] + S[j]) mod 256</code>.</li>
-                                    <li>The keystream byte is <code>K = S[t]</code>.</li>
-                                </ul>
-                            </li>
-                            <li>Ciphertext byte = Plaintext byte XOR Keystream byte (<code>C = P ⊕ K</code>).</li>
-                        </ol>
+                        <h4>Initialization</h4>
+                        <p>The entries of <code>S</code> are set equal to the values from 0 to 255 in ascending order,
+                            and a temporary vector <code>T</code> is created. If the length of the key <code>K</code> is
+                            256 bytes, then <code>K</code> is assigned to <code>T</code>. Otherwise, for a key with
+                            length (k-len) bytes, the first k-len elements of <code>T</code> are copied from
+                            <code>K</code>, and then <code>K</code> is repeated as many times as necessary to fill
+                            <code>T</code>.</p>
+                        <pre><code>For i = 0 to 255 do
+  S[i] = i;
+  T[i] = K[i mod k-len];</code></pre>
+
+                        <h4>Initial Permutation of S</h4>
+                        <p>We use <code>T</code> to produce the initial permutation of <code>S</code>. Starting with
+                            <code>S[0]</code> to <code>S[255]</code>, and for each <code>S[i]</code>, the algorithm
+                            swaps it with another byte in <code>S</code> according to a scheme dictated by
+                            <code>T[i]</code>, but <code>S</code> will still contain values from 0 to 255:</p>
+                        <pre><code>j = 0;
+for i = 0 to 255 do {
+  j = (j + S[i] + T[i]) mod 256;
+  Swap(S[i], S[j]);
+}</code></pre>
+
+                        <h3>2. Pseudo random generation algorithm (PRGA) / Stream Generation</h3>
+                        <p>Once the vector <code>S</code> is initialized, the input key will not be used. In this step,
+                            for each <code>S[i]</code>, the algorithm swaps it with another byte in <code>S</code>
+                            according to a scheme dictated by the current configuration of <code>S</code>. After
+                            reaching <code>S[255]</code> the process continues, starting from <code>S[0]</code> again.
+                        </p>
+                        <pre><code>i, j = 0;
+while (true) {
+  i = (i + 1) mod 256;
+  j = (j + S[i]) mod 256;
+  Swap(S[i], S[j]);
+  t = (S[i] + S[j]) mod 256;
+  k = S[t];
+}</code></pre>
+
+                        <h3>3. Encrypt using X-OR</h3>
+                        <p>The plaintext is then XORed with <code>k</code> to generate the ciphertext. To generate
+                            plaintext from ciphertext, <code>k</code> is XORed with the ciphertext.</p>
+                        <p><strong>Example:</strong><br>
+                            RC4 Encryption: <code>10011000 XOR 01010000 = 11001000</code><br>
+                            RC4 Decryption: <code>11001000 XOR 01010000 = 10011000</code></p>
                     </div>
                 </section>
 
