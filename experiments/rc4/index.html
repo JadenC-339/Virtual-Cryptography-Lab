@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RC4 Key Scheduling Algorithm</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Virtual Cryptography Lab</h2>
+                <span class="experiment-id">EXP04</span>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-btn active" data-target="aim">
+                    <span class="nav-icon">🎯</span> Aim & Objectives
+                </button>
+                <button class="nav-btn" data-target="theory">
+                    <span class="nav-icon">📚</span> Theory
+                </button>
+                <button class="nav-btn" data-target="procedure">
+                    <span class="nav-icon">📝</span> Procedure
+                </button>
+                <button class="nav-btn" data-target="simulation">
+                    <span class="nav-icon">🔬</span> Simulation
+                </button>
+                <button class="nav-btn" data-target="quiz">
+                    <span class="nav-icon">❓</span> Assessment
+                </button>
+                <button class="nav-btn" data-target="references">
+                    <span class="nav-icon">📖</span> References
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-header">
+                <h1>RC4 Key Scheduling Algorithm</h1>
+            </header>
+
+            <div class="content-container">
+                <!-- Aim Section -->
+                <section class="content-section active" id="aim">
+                    <h2>Aim and Objectives</h2>
+                    <div class="card">
+                        <h3>Aim:</h3>
+                        <p>To understand, visualize, and implement the RC4 Key Scheduling Algorithm (KSA) and understand
+                            how it initializes the state array, followed by the generation of the keystream using the
+                            Pseudo-Random Generation Algorithm (PRGA) for encryption and decryption.</p>
+
+                        <h3>Objectives:</h3>
+                        <ul>
+                            <li>To visualize the initialization of the 256-byte state array `S`.</li>
+                            <li>To understand the swapping mechanism involved during the KSA.</li>
+                            <li>To visualize how the PRGA generates the keystream byte by byte.</li>
+                            <li>To perform RC4 encryption and decryption on given strings.</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Theory Section -->
+                <section class="content-section" id="theory">
+                    <h2>Relevant Theoretical Concepts</h2>
+                    <div class="card">
+                        <h3>What is RC4?</h3>
+                        <p>RC4 (Rivest Cipher 4) is a stream cipher, designed by Ron Rivest in 1987. It is known for its
+                            simplicity and speed in software applications. Rather than processing data in fixed blocks,
+                            a stream cipher encrypts data one byte at a time.</p>
+
+                        <h3>The Two Phases of RC4:</h3>
+                        <h4>1. Key-Scheduling Algorithm (KSA)</h4>
+                        <p>The KSA is used to initialize the permutation in the array <code>S</code>. "Keylength" is
+                            defined as the number of bytes in the key and can be in the range 1 ≤ keylength ≤ 256,
+                            typically between 5 and 16, corresponding to a key length of 40-128 bits. First, the array
+                            <code>S</code> is initialized to the identity permutation. <code>S[i] = i</code> for all
+                            <code>i</code> from 0 to 255. A secondary array <code>T</code> is also initialized using the
+                            provided key.</p>
+                        <p>Then, the array <code>S</code> is processed for 256 iterations in a way that is determined by
+                            the key.</p>
+
+                        <h4>2. Pseudo-Random Generation Algorithm (PRGA)</h4>
+                        <p>Once the array <code>S</code> has been initialized from the key, the KSA is completed. The
+                            PRGA starts taking over and generates sequence of random bits, extracting pseudo-random
+                            keystream bytes until the full length of the plaintext has been reached.</p>
+                        <p>For operations, RC4 uses an XOR operation between the keystream bytes generated and the
+                            plaintext to produce ciphertext. Since XOR is its own inverse, exactly the same operation is
+                            applied for decryption.</p>
+                    </div>
+                </section>
+
+                <!-- Procedure Section -->
+                <section class="content-section" id="procedure">
+                    <h2>Step-by-Step Procedure</h2>
+                    <div class="card">
+                        <h3>1. Key Scheduling Algorithm (KSA)</h3>
+                        <ol>
+                            <li>Initialize an array `S` of size 256, where <code>S[i] = i</code> for <code>i = 0</code>
+                                to <code>255</code>.</li>
+                            <li>Initialize an array `T` of size 256. If the key length is 256 bytes, copy the key
+                                completely into <code>T</code>. If the key is shorter, copy the key repeatedly into
+                                <code>T</code> until <code>T</code> is filled.</li>
+                            <li>Set index <code>j = 0</code>.</li>
+                            <li>For <code>i = 0</code> to <code>255</code> do:
+                                <ul>
+                                    <li><code>j = (j + S[i] + T[i]) mod 256</code></li>
+                                    <li>Swap the values of <code>S[i]</code> and <code>S[j]</code>.</li>
+                                </ul>
+                            </li>
+                        </ol>
+
+                        <h3>2. Pseudo-Random Generation Algorithm (PRGA)</h3>
+                        <ol>
+                            <li>Initialize indices <code>i = 0</code> and <code>j = 0</code>.</li>
+                            <li>For each byte of plaintext, do:
+                                <ul>
+                                    <li><code>i = (i + 1) mod 256</code></li>
+                                    <li><code>j = (j + S[i]) mod 256</code></li>
+                                    <li>Swap the values of <code>S[i]</code> and <code>S[j]</code>.</li>
+                                    <li>Calculate index <code>t = (S[i] + S[j]) mod 256</code>.</li>
+                                    <li>The keystream byte is <code>K = S[t]</code>.</li>
+                                </ul>
+                            </li>
+                            <li>Ciphertext byte = Plaintext byte XOR Keystream byte (<code>C = P ⊕ K</code>).</li>
+                        </ol>
+                    </div>
+                </section>
+
+                <!-- Simulation Section -->
+                <section class="content-section" id="simulation">
+                    <h2>Interactive Simulation</h2>
+                    <div class="simulation-container">
+
+                        <!-- RC4 Config Panel -->
+                        <div class="card config-panel">
+                            <h3>1. Algorithm Configuration</h3>
+                            <div class="input-group">
+                                <label for="sim-key">Secret Key:</label>
+                                <input type="text" id="sim-key" placeholder="Enter key (e.g., Secret)" value="Key">
+                            </div>
+                            <div class="button-group">
+                                <button id="btn-ksa-run" class="btn primary-btn">Run KSA Instantly</button>
+                                <button id="btn-ksa-step" class="btn secondary-btn">Step KSA</button>
+                                <button id="btn-reset" class="btn outline-btn">Reset</button>
+                            </div>
+                            <div class="status-panel">
+                                <p><strong>Status:</strong> <span id="status-text">Ready. Please initialize by running
+                                        KSA.</span></p>
+                                <p><strong>Pointers:</strong> i = <span id="val-i">0</span>, j = <span
+                                        id="val-j">0</span></p>
+                            </div>
+                        </div>
+
+                        <!-- Visualization View -->
+                        <div class="card visualization-panel">
+                            <h3>State Array `S` Visualization</h3>
+                            <div id="state-grid" class="state-grid">
+                                <!-- JS will populate 256 squares here -->
+                            </div>
+                        </div>
+
+                        <!-- Data Processing Panel -->
+                        <div class="card processing-panel" id="prga-panel" style="opacity: 0.5; pointer-events: none;">
+                            <h3>2. Encryption / Decryption (PRGA)</h3>
+                            <p class="helper-text">You must run KSA fully before performing encryption/decryption.</p>
+                            <div class="io-panels">
+                                <div class="input-panel">
+                                    <label for="sim-plaintext">Input Text:</label>
+                                    <textarea id="sim-plaintext"
+                                        placeholder="Enter text to encrypt or decrypt"></textarea>
+                                </div>
+                                <div class="output-panel">
+                                    <label for="sim-output">Output Check (Hex / Text):</label>
+                                    <textarea id="sim-output" readonly></textarea>
+                                </div>
+                            </div>
+                            <div class="key-stream-view" id="keystream-view">
+                                <strong>Keystream Generated:</strong> <span class="monospaced"
+                                    id="generated-keystream">--</span>
+                            </div>
+                            <div class="button-group mt-3">
+                                <button id="btn-encrypt" class="btn primary-btn" disabled>Encrypt</button>
+                                <button id="btn-decrypt" class="btn secondary-btn" disabled>Decrypt (From Hex)</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Quiz Section -->
+                <section class="content-section" id="quiz">
+                    <h2>Assessment</h2>
+                    <div class="card quiz-card">
+                        <div id="quiz-container">
+                            <!-- Quiz questions dynamically loaded by JS -->
+                        </div>
+                        <button id="btn-submit-quiz" class="btn primary-btn mt-3">Submit Quiz</button>
+                        <div id="quiz-result" class="quiz-result hidden"></div>
+                    </div>
+                </section>
+
+                <!-- References Section -->
+                <section class="content-section" id="references">
+                    <h2>References</h2>
+                    <div class="card">
+                        <ul>
+                            <li><a href="https://en.wikipedia.org/wiki/RC4" target="_blank">Wikipedia: RC4</a></li>
+                            <li>Applied Cryptography, 2nd Edition by Bruce Schneier.</li>
+                            <li><a href="https://datatracker.ietf.org/doc/html/rfc4345" target="_blank">IETF RFC 4345 -
+                                    Improved Arcfour Modes for the Secure Shell (SSH) Transport Layer Protocol</a></li>
+                        </ul>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
