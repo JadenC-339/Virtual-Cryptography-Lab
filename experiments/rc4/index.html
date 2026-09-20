@@ -103,7 +103,8 @@
                             256 bytes, then <code>K</code> is assigned to <code>T</code>. Otherwise, for a key with
                             length (k-len) bytes, the first k-len elements of <code>T</code> are copied from
                             <code>K</code>, and then <code>K</code> is repeated as many times as necessary to fill
-                            <code>T</code>.</p>
+                            <code>T</code>.
+                        </p>
                         <pre><code>For i = 0 to 255 do
   S[i] = i;
   T[i] = K[i mod k-len];</code></pre>
@@ -112,7 +113,8 @@
                         <p>We use <code>T</code> to produce the initial permutation of <code>S</code>. Starting with
                             <code>S[0]</code> to <code>S[255]</code>, and for each <code>S[i]</code>, the algorithm
                             swaps it with another byte in <code>S</code> according to a scheme dictated by
-                            <code>T[i]</code>, but <code>S</code> will still contain values from 0 to 255:</p>
+                            <code>T[i]</code>, but <code>S</code> will still contain values from 0 to 255:
+                        </p>
                         <pre><code>j = 0;
 for i = 0 to 255 do {
   j = (j + S[i] + T[i]) mod 256;
@@ -219,12 +221,59 @@ while (true) {
                 <section class="content-section" id="references">
                     <h2>References</h2>
                     <div class="card">
-                        <ul>
-                            <li><a href="https://en.wikipedia.org/wiki/RC4" target="_blank">Wikipedia: RC4</a></li>
-                            <li>Applied Cryptography, 2nd Edition by Bruce Schneier.</li>
-                            <li><a href="https://datatracker.ietf.org/doc/html/rfc4345" target="_blank">IETF RFC 4345 -
-                                    Improved Arcfour Modes for the Secure Shell (SSH) Transport Layer Protocol</a></li>
-                        </ul>
+                        <p>The following are free, open-access resources used to compile the theory and content for this
+                            lab module:</p>
+                        <ol>
+                            <li>
+                                <strong>Wikipedia Contributors.</strong> "RC4." <em>Wikipedia, The Free
+                                    Encyclopedia.</em><br>
+                                <a href="https://en.wikipedia.org/wiki/RC4"
+                                    target="_blank">https://en.wikipedia.org/wiki/RC4</a><br>
+                                <small>Comprehensive overview of RC4 including its history, KSA, PRGA, and known
+                                    vulnerabilities.</small>
+                            </li>
+                            <li>
+                                <strong>GeeksforGeeks.</strong> "RC4 Encryption Algorithm." <em>GeeksforGeeks.</em><br>
+                                <a href="https://www.geeksforgeeks.org/rc4-encryption-algorithm/"
+                                    target="_blank">https://www.geeksforgeeks.org/rc4-encryption-algorithm/</a><br>
+                                <small>Step-by-step walkthrough of the Key-Scheduling Algorithm, PRGA, and XOR
+                                    encryption with examples — the primary reference for this module's theory and
+                                    procedure.</small>
+                            </li>
+                            <li>
+                                <strong>Baldwin, R. & Rivest, R.</strong> "The RC5, RC5-CBC, RC5-CBC-Pad, and RC5-CTS
+                                Algorithms." <em>IETF RFC 2040.</em><br>
+                                <a href="https://www.rfc-editor.org/rfc/rfc2040"
+                                    target="_blank">https://www.rfc-editor.org/rfc/rfc2040</a><br>
+                                <small>IETF official documentation on Rivest Cipher algorithms, providing standards
+                                    context for the RC family.</small>
+                            </li>
+                            <li>
+                                <strong>Harris, R. et al.</strong> "Test Vectors for the Stream Cipher RC4." <em>IETF
+                                    RFC 6229, RFC Editor.</em><br>
+                                <a href="https://www.rfc-editor.org/rfc/rfc6229"
+                                    target="_blank">https://www.rfc-editor.org/rfc/rfc6229</a><br>
+                                <small>Contains official test vectors for verifying correct implementations of the RC4
+                                    KSA and PRGA — useful for validating simulation output.</small>
+                            </li>
+                            <li>
+                                <strong>Popov, A.</strong> "Prohibiting RC4 Cipher Suites." <em>IETF RFC 7465, RFC
+                                    Editor.</em><br>
+                                <a href="https://www.rfc-editor.org/rfc/rfc7465"
+                                    target="_blank">https://www.rfc-editor.org/rfc/rfc7465</a><br>
+                                <small>Official IETF document prohibiting RC4 in TLS, explaining why RC4 is considered
+                                    insecure in modern SSL/TLS — directly relevant to the Applications section of this
+                                    theory.</small>
+                            </li>
+                            <li>
+                                <strong>Barrett, B. & Silverman, R.</strong> "SSH, The Secure Shell: The Definitive
+                                Guide." <em>O'Reilly Media.</em><br>
+                                <a href="https://datatracker.ietf.org/doc/html/rfc4345" target="_blank">IETF RFC 4345 –
+                                    Improved Arcfour Modes for SSH Transport Layer Protocol</a><br>
+                                <small>Details the use of Arcfour (RC4) within the SSH protocol, covering how RC4 was
+                                    deployed in network security standards.</small>
+                            </li>
+                        </ol>
                     </div>
                 </section>
             </div>
