@@ -78,12 +78,9 @@ function resetSimulation() {
     statusText.textContent = "Ready to start KSA.";
     document.getElementById("prga-panel").style.opacity = "0.5";
     document.getElementById("prga-panel").style.pointerEvents = "none";
-    document.getElementById("btn-encrypt").disabled = true;
-    document.getElementById("btn-decrypt").disabled = true;
-    document.getElementById("sim-output").value = "";
-    document.getElementById("generated-keystream").textContent = "--";
     document.getElementById("btn-ksa-run").disabled = false;
     document.getElementById("btn-ksa-step").disabled = false;
+    resetPrga();
 }
 
 function initializeKeyArray() {
@@ -125,26 +122,25 @@ function doKsaStep() {
         setTimeout(() => {
             updateCell(ksa_i, "cell-swap");
             updateCell(ksa_j, "cell-swap");
-        }, 150); // small delay to visualize swap
+        }, 150);
 
         ksa_i++;
-        return true; // Still running
+        return true;
     } else {
         completeKSA();
-        return false; // Done
+        return false;
     }
 }
 
 function completeKSA() {
     ksa_completed = true;
     clearCellHighlights();
-    statusText.textContent = "KSA Completed. Ready for Encryption/Decryption.";
+    statusText.textContent = "KSA Completed. State array S is now fully permuted. Ready for PRGA.";
     document.getElementById("prga-panel").style.opacity = "1";
     document.getElementById("prga-panel").style.pointerEvents = "auto";
-    document.getElementById("btn-encrypt").disabled = false;
-    document.getElementById("btn-decrypt").disabled = false;
     document.getElementById("btn-ksa-run").disabled = true;
     document.getElementById("btn-ksa-step").disabled = true;
+    resetPrga();
 }
 
 let runningFullKsa = false;
@@ -173,64 +169,230 @@ function runFullKsa() {
     completeKSA();
 }
 
-// PRGA Logic
-function generateRc4(text, isDecryptHex = false) {
+/* ========================================================
+   Step-by-Step PRGA Keystream Logic & Trace Table
+======================================================== */
+let prga_S = [];
+let prga_i = 0;
+let prga_j = 0;
+let prga_step_index = 0;
+let prga_input_bytes = [];
+let prga_keystream_bytes = [];
+let prga_output_bytes = [];
+let prga_is_decrypt = false;
+let prga_raw_text = "";
+
+function resetPrga() {
+    prga_S = [...S];
+    prga_i = 0;
+    prga_j = 0;
+    prga_step_index = 0;
+    prga_input_bytes = [];
+    prga_keystream_bytes = [];
+    prga_output_bytes = [];
+    prga_raw_text = "";
+
+    if (ksa_completed) {
+        for (let idx = 0; idx < 256; idx++) {
+            updateCell(idx);
+        }
+        clearCellHighlights();
+        document.getElementById("btn-prga-step").disabled = false;
+        document.getElementById("btn-encrypt").disabled = false;
+        document.getElementById("btn-decrypt").disabled = false;
+        document.getElementById("btn-prga-reset").disabled = false;
+    } else {
+        document.getElementById("btn-prga-step").disabled = true;
+        document.getElementById("btn-encrypt").disabled = true;
+        document.getElementById("btn-decrypt").disabled = true;
+        document.getElementById("btn-prga-reset").disabled = true;
+    }
+
+    document.getElementById("generated-keystream").textContent = "--";
+    document.getElementById("sim-output").value = "";
+    document.getElementById("prga-byte-idx").textContent = "—";
+    document.getElementById("prga-val-i").textContent = "0";
+    document.getElementById("prga-val-j").textContent = "0";
+    document.getElementById("prga-val-t").textContent = "—";
+    document.getElementById("prga-val-k").textContent = "—";
+    document.getElementById("prga-math-formula").innerHTML = 'Click <strong>"Step PRGA"</strong> to generate the keystream byte by byte and see each calculation.';
+    document.getElementById("prga-trace-tbody").innerHTML = `<tr class="prga-table-empty"><td colspan="9">No keystream generated yet — click <strong>Step PRGA</strong> or <strong>Encrypt All</strong>.</td></tr>`;
+}
+
+function preparePrgaInput(isDecrypt = false) {
+    const rawText = document.getElementById("sim-plaintext").value;
+    if (!rawText) {
+        alert("Please enter input text in the Input Text area.");
+        return false;
+    }
+
+    if (prga_raw_text !== rawText || prga_is_decrypt !== isDecrypt || prga_input_bytes.length === 0) {
+        prga_raw_text = rawText;
+        prga_is_decrypt = isDecrypt;
+        prga_S = [...S];
+        prga_i = 0;
+        prga_j = 0;
+        prga_step_index = 0;
+        prga_keystream_bytes = [];
+        prga_output_bytes = [];
+        prga_input_bytes = [];
+
+        if (isDecrypt) {
+            let cleanHex = rawText.replace(/\s+/g, '');
+            if (cleanHex.length === 0 || cleanHex.length % 2 !== 0) {
+                alert("For Decrypt (From Hex), please provide an even number of hex characters (e.g., '1B 2C 3D').");
+                return false;
+            }
+            for (let c = 0; c < cleanHex.length; c += 2) {
+                let parsed = parseInt(cleanHex.substr(c, 2), 16);
+                if (isNaN(parsed)) {
+                    alert("Invalid hex character detected.");
+                    return false;
+                }
+                prga_input_bytes.push(parsed);
+            }
+        } else {
+            for (let c = 0; c < rawText.length; c++) {
+                prga_input_bytes.push(rawText.charCodeAt(c));
+            }
+        }
+
+        // Reset grid display
+        for (let idx = 0; idx < 256; idx++) {
+            updateCell(idx);
+        }
+        clearCellHighlights();
+
+        document.getElementById("prga-trace-tbody").innerHTML = "";
+        document.getElementById("generated-keystream").textContent = "--";
+        document.getElementById("sim-output").value = "";
+    }
+    return true;
+}
+
+function doPrgaStep() {
     if (!ksa_completed) return;
+    if (!preparePrgaInput(prga_is_decrypt)) return;
 
-    let prga_i = 0;
-    let prga_j = 0;
+    if (prga_step_index >= prga_input_bytes.length) {
+        document.getElementById("prga-math-formula").textContent = "All keystream bytes have been generated for this message. Click 'Reset Keystream' to run again.";
+        document.getElementById("btn-prga-step").disabled = true;
+        return;
+    }
 
-    // We must clone S so that subsequent encrypt operations don't pick up from where PRGA left off,
-    // (Standard RC4 retains state, but for this lab, we should reset PRGA state for each encryption of full text for simplicity and correctness)
-    let S_clone = [...S];
+    let k_idx = prga_step_index;
+    let inByte = prga_input_bytes[k_idx];
 
-    let inputBytes = [];
-    if (isDecryptHex) {
-        text = text.replace(/\s/g, ''); // remove spaces
-        for (let c = 0; c < text.length; c += 2) {
-            inputBytes.push(parseInt(text.substr(c, 2), 16));
-        }
+    // Clear previous cell visual highlights
+    clearCellHighlights();
+
+    // 1. Advance i: i = (i + 1) mod 256
+    let prev_i = prga_i;
+    prga_i = (prga_i + 1) % 256;
+
+    // 2. Advance j: j = (j + S[i]) mod 256
+    let prev_j = prga_j;
+    let s_i_val = prga_S[prga_i];
+    prga_j = (prga_j + s_i_val) % 256;
+
+    // 3. Swap S[i] and S[j]
+    let s_j_val = prga_S[prga_j];
+    let temp = prga_S[prga_i];
+    prga_S[prga_i] = prga_S[prga_j];
+    prga_S[prga_j] = temp;
+
+    // 4. Calculate lookup index t = (S[i] + S[j]) mod 256
+    let t = (prga_S[prga_i] + prga_S[prga_j]) % 256;
+    let keystreamByte = prga_S[t];
+    prga_keystream_bytes.push(keystreamByte);
+
+    // 5. XOR Operation: InputByte ^ KeystreamByte
+    let outByte = inByte ^ keystreamByte;
+    prga_output_bytes.push(outByte);
+
+    // Visual updates on the 256-cell grid
+    updateCell(prga_i, "cell-i");
+    updateCell(prga_j, "cell-j");
+    if (t !== prga_i && t !== prga_j) {
+        updateCell(t, "cell-t");
+    }
+
+    // Formatting strings
+    let inByteHex = "0x" + ('0' + inByte.toString(16).toUpperCase()).slice(-2);
+    let inChar = (!prga_is_decrypt && inByte >= 32 && inByte <= 126) ? `'${String.fromCharCode(inByte)}'` : inByteHex;
+    let kHex = "0x" + ('0' + keystreamByte.toString(16).toUpperCase()).slice(-2);
+    let outHex = "0x" + ('0' + outByte.toString(16).toUpperCase()).slice(-2);
+    let outChar = (prga_is_decrypt && outByte >= 32 && outByte <= 126) ? `'${String.fromCharCode(outByte)}'` : outHex;
+
+    // Update PRGA status cards
+    document.getElementById("prga-byte-idx").textContent = `Byte ${k_idx + 1} of ${prga_input_bytes.length} (${inChar})`;
+    document.getElementById("prga-val-i").textContent = `${prga_i} (S[i]=${prga_S[prga_i]})`;
+    document.getElementById("prga-val-j").textContent = `${prga_j} (S[j]=${prga_S[prga_j]})`;
+    document.getElementById("prga-val-t").textContent = `${t} (S[${t}]=${keystreamByte})`;
+    document.getElementById("prga-val-k").textContent = `${kHex} (Dec: ${keystreamByte})`;
+
+    document.getElementById("prga-math-formula").innerHTML =
+        `<strong>Byte ${k_idx + 1} Computation:</strong><br>` +
+        `• Pointers: i = (${prev_i} + 1) mod 256 = <strong>${prga_i}</strong> | ` +
+        `j = (${prev_j} + S[${prga_i}]=${s_i_val}) mod 256 = <strong>${prga_j}</strong><br>` +
+        `• State Swap: S[${prga_i}] ↔ S[${prga_j}] (new S[${prga_i}]=${prga_S[prga_i]}, S[${prga_j}]=${prga_S[prga_j]})<br>` +
+        `• Lookup index: t = (${prga_S[prga_i]} + ${prga_S[prga_j]}) mod 256 = <strong>${t}</strong><br>` +
+        `• Keystream Byte: k = S[${t}] = <strong>${kHex}</strong> (${keystreamByte})<br>` +
+        `• XOR Output: ${inChar} (${inByteHex}) ⊕ ${kHex} = <strong>${outHex}</strong> (${outChar})`;
+
+    // Append to step table
+    let tbody = document.getElementById("prga-trace-tbody");
+    if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
+        tbody.innerHTML = "";
+    }
+
+    let prevRow = tbody.querySelector(".active-step-row");
+    if (prevRow) prevRow.classList.remove("active-step-row");
+
+    let row = document.createElement("tr");
+    row.className = "active-step-row";
+    row.innerHTML = `
+        <td>${k_idx + 1}</td>
+        <td>${inChar} <small>(${inByteHex})</small></td>
+        <td>${prga_i}</td>
+        <td>${prga_j}</td>
+        <td>S[${prga_i}] ↔ S[${prga_j}]</td>
+        <td>${t}</td>
+        <td><strong style="color: #2a9d8f;">${kHex}</strong> <small>(${keystreamByte})</small></td>
+        <td>${inByteHex} ⊕ ${kHex}</td>
+        <td><strong>${outHex}</strong> <small>(${outChar})</small></td>
+    `;
+    tbody.appendChild(row);
+    row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // Update keystream view
+    let keystreamHexStr = prga_keystream_bytes.map(b => ('0' + b.toString(16).toUpperCase()).slice(-2)).join(" ");
+    document.getElementById("generated-keystream").textContent = keystreamHexStr;
+
+    // Update Output
+    let outputStr = "";
+    if (prga_is_decrypt) {
+        outputStr = prga_output_bytes.map(b => String.fromCharCode(b)).join("");
     } else {
-        for (let c = 0; c < text.length; c++) {
-            inputBytes.push(text.charCodeAt(c));
-        }
+        outputStr = prga_output_bytes.map(b => ('0' + b.toString(16).toUpperCase()).slice(-2)).join(" ");
     }
+    document.getElementById("sim-output").value = outputStr;
 
-    let outputBytes = [];
-    let keystreamHex = [];
-
-    for (let k = 0; k < inputBytes.length; k++) {
-        prga_i = (prga_i + 1) % 256;
-        prga_j = (prga_j + S_clone[prga_i]) % 256;
-
-        let temp = S_clone[prga_i];
-        S_clone[prga_i] = S_clone[prga_j];
-        S_clone[prga_j] = temp;
-
-        let t = (S_clone[prga_i] + S_clone[prga_j]) % 256;
-        let keystreamByte = S_clone[t];
-
-        keystreamHex.push(('0' + keystreamByte.toString(16).toUpperCase()).slice(-2));
-
-        let outByte = inputBytes[k] ^ keystreamByte;
-        outputBytes.push(outByte);
+    prga_step_index++;
+    if (prga_step_index >= prga_input_bytes.length) {
+        document.getElementById("btn-prga-step").disabled = true;
     }
+}
 
-    document.getElementById("generated-keystream").textContent = keystreamHex.join(" ");
+function runFullPrga(isDecrypt = false) {
+    if (!ksa_completed) return;
+    // Always re-initialize to process the entire input cleanly
+    prga_raw_text = "";
+    if (!preparePrgaInput(isDecrypt)) return;
 
-    let result = "";
-    if (isDecryptHex) {
-        // Output as string
-        for (let i = 0; i < outputBytes.length; i++) {
-            result += String.fromCharCode(outputBytes[i]);
-        }
-    } else {
-        // Output as hex
-        for (let i = 0; i < outputBytes.length; i++) {
-            result += ('0' + outputBytes[i].toString(16).toUpperCase()).slice(-2) + " ";
-        }
+    while (prga_step_index < prga_input_bytes.length) {
+        doPrgaStep();
     }
-    document.getElementById("sim-output").value = result.trim();
 }
 
 function initSimulation() {
@@ -244,14 +406,20 @@ function initSimulation() {
         doKsaStep();
     });
 
+    document.getElementById("btn-prga-step").addEventListener("click", () => {
+        doPrgaStep();
+    });
+
     document.getElementById("btn-encrypt").addEventListener("click", () => {
-        const text = document.getElementById("sim-plaintext").value;
-        if (text) generateRc4(text, false);
+        runFullPrga(false);
     });
 
     document.getElementById("btn-decrypt").addEventListener("click", () => {
-        const text = document.getElementById("sim-plaintext").value;
-        if (text) generateRc4(text, true);
+        runFullPrga(true);
+    });
+
+    document.getElementById("btn-prga-reset").addEventListener("click", () => {
+        resetPrga();
     });
 }
 
@@ -261,13 +429,18 @@ function initSimulation() {
 ======================================================== */
 const quizQuestions = [
     {
-        question: "What is the size of the state array 'S' initialized in RC4?",
-        options: ["128 Bytes", "256 Bytes", "64 Bytes", "512 Bytes"],
-        answer: 1 // index 1 is "256 Bytes"
+        question: "During the second KSA iteration, suppose  the value of i=1, value of j after first iteration=75 and S[1]=1. The secret key is : \"key\"(ascii values: k=75,e=101,y=121). Calculate the new value of j, then identify which elements will be swapped.",
+        options: ["S[1] and S[75]", "S[1] and S[177]", "S[75] and S[177]", "S[1] and S[2]"],
+        answer: 1
     },
     {
-        question: "Is RC4 a block cipher or a stream cipher?",
-        options: ["Block Cipher", "Stream Cipher", "Hash Function", "Asymmetric Cipher"],
+        question: "What is a major security flaw that affected the RC4 algorithm?",
+        options: [
+            "It relies on complex mathematical transformations.",
+            "Limited or biased key streams could lead to predictable output patterns.",
+            "The algorithm uses an excessively long key length.",
+            "The encryption process is too slow for practical use"
+        ],
         answer: 1
     },
     {
@@ -279,11 +452,6 @@ const quizQuestions = [
         question: "What mathematical operation is used in RC4 to generate ciphertext from plaintext and keystream?",
         options: ["AND", "OR", "XOR", "NOT"],
         answer: 2
-    },
-    {
-        question: "Who designed the RC4 algorithm?",
-        options: ["Bruce Schneier", "Ron Rivest", "Whitfield Diffie", "Martin Hellman"],
-        answer: 1
     },
     {
         question: "In which wireless protocol is RC4 most notoriously used?",
@@ -305,41 +473,44 @@ const quizQuestions = [
 function initQuiz() {
     const quizContainer = document.getElementById("quiz-container");
 
-    quizQuestions.forEach((q, index) => {
-        const qDiv = document.createElement("div");
-        qDiv.className = "quiz-question";
+    // Only generate questions dynamically if not already statically rendered in the HTML
+    if (quizContainer && quizContainer.querySelectorAll(".quiz-question").length === 0) {
+        quizQuestions.forEach((q, index) => {
+            const qDiv = document.createElement("div");
+            qDiv.className = "quiz-question";
 
-        const qTitle = document.createElement("h4");
-        qTitle.textContent = `${index + 1}. ${q.question}`;
-        qDiv.appendChild(qTitle);
+            const qTitle = document.createElement("h4");
+            qTitle.textContent = `${index + 1}. ${q.question}`;
+            qDiv.appendChild(qTitle);
 
-        const optionsList = document.createElement("ul");
-        optionsList.className = "quiz-options";
+            const optionsList = document.createElement("ul");
+            optionsList.className = "quiz-options";
 
-        q.options.forEach((opt, optIndex) => {
-            const li = document.createElement("li");
-            const label = document.createElement("label");
-            const radio = document.createElement("input");
+            q.options.forEach((opt, optIndex) => {
+                const li = document.createElement("li");
+                const label = document.createElement("label");
+                const radio = document.createElement("input");
 
-            radio.type = "radio";
-            radio.name = `question${index}`;
-            radio.value = optIndex;
+                radio.type = "radio";
+                radio.name = `question${index}`;
+                radio.value = optIndex;
 
-            label.appendChild(radio);
-            label.appendChild(document.createTextNode(opt));
-            li.appendChild(label);
-            optionsList.appendChild(li);
+                label.appendChild(radio);
+                label.appendChild(document.createTextNode(opt));
+                li.appendChild(label);
+                optionsList.appendChild(li);
+            });
+
+            qDiv.appendChild(optionsList);
+
+            // Add feedback div
+            const feedbackDiv = document.createElement("div");
+            feedbackDiv.className = "question-feedback hidden";
+            qDiv.appendChild(feedbackDiv);
+
+            quizContainer.appendChild(qDiv);
         });
-
-        qDiv.appendChild(optionsList);
-
-        // Add feedback div
-        const feedbackDiv = document.createElement("div");
-        feedbackDiv.className = "question-feedback hidden";
-        qDiv.appendChild(feedbackDiv);
-
-        quizContainer.appendChild(qDiv);
-    });
+    }
 
     document.getElementById("btn-submit-quiz").addEventListener("click", ev => {
         let score = 0;

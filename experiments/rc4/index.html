@@ -51,9 +51,7 @@
                     <h2>Aim and Objectives</h2>
                     <div class="card">
                         <h3>Aim:</h3>
-                        <p>To understand, visualize, and implement the RC4 Key Scheduling Algorithm (KSA) and understand
-                            how it initializes the state array, followed by the generation of the keystream using the
-                            Pseudo-Random Generation Algorithm (PRGA) for encryption and decryption.</p>
+                        <p>To implement the RC4 Key Scheduling Algorithm (KSA).</p>
 
                         <h3>Objectives:</h3>
                         <ul>
@@ -77,18 +75,7 @@
                             time with the plaintext stream cipher using the XOR operation. It was designed by Ron Rivest
                             for RSA Security in 1987.</p>
 
-                        <h3>Applications</h3>
-                        <p>RC4 is used in the Secure Socket Layer (SSL)/Transport Layer Security (TLS) standards defined
-                            for communication between Web browsers and Servers. It is also used in the Wired Equivalent
-                            Privacy (WEP) protocol and the newer WiFi Protected Access (WPA) protocol that are part of
-                            the IEEE 802.11 wireless LAN standard.</p>
-                    </div>
-                </section>
 
-                <!-- Procedure Section -->
-                <section class="content-section" id="procedure">
-                    <h2>Step-by-Step Procedure</h2>
-                    <div class="card">
                         <h3>1. Key-Generation Algorithm (KSA)</h3>
                         <p>A variable-length key from 1 to 256 bytes is used to initialize a 256-byte state vector
                             <code>S</code>, with elements <code>S[0]</code> to <code>S[255]</code>. <code>S</code>
@@ -142,6 +129,69 @@ while (true) {
                         <p><strong>Example:</strong><br>
                             RC4 Encryption: <code>10011000 XOR 01010000 = 11001000</code><br>
                             RC4 Decryption: <code>11001000 XOR 01010000 = 10011000</code></p>
+
+                        <h3>Applications</h3>
+                        <p>RC4 is used in the Secure Socket Layer (SSL)/Transport Layer Security (TLS) standards defined
+                            for communication between Web browsers and Servers. It is also used in the Wired Equivalent
+                            Privacy (WEP) protocol and the newer WiFi Protected Access (WPA) protocol that are part of
+                            the IEEE 802.11 wireless LAN standard.</p>
+                    </div>
+                </section>
+
+                <!-- Procedure Section -->
+                <section class="content-section" id="procedure">
+                    <h2>Step-by-Step Procedure</h2>
+                    <div class="card">
+                        <h3>Procedure:</h3>
+                        <ol class="procedure-list">
+                            <li>
+                                <strong>Select the key K:</strong>
+                                <p>Choose a secret key <code>K</code> of variable length (typically between 1 and 256 bytes, or 8 to 2048 bits). The characters of the key are converted into their numeric byte/ASCII representation, and its length in bytes is recorded as <code>k-len</code>.</p>
+                            </li>
+                            <li>
+                                <strong>Fill the registers S and T:</strong>
+                                <ul>
+                                    <li><strong>Initialize State Array S:</strong> Allocate a 256-byte state vector <code>S</code> and initialize each entry from 0 to 255 in strictly ascending order:
+                                        <pre><code>For i = 0 to 255 do:
+    S[i] = i</code></pre>
+                                    </li>
+                                    <li><strong>Fill Temporary Register T:</strong> Create a secondary 256-byte vector <code>T</code>. If key length <code>k-len = 256</code>, transfer <code>K</code> directly to <code>T</code>. Otherwise, populate <code>T</code> by cyclically repeating the key bytes:
+                                        <pre><code>For i = 0 to 255 do:
+    T[i] = K[i mod k-len]</code></pre>
+                                    </li>
+                                    <li><strong>Initial Permutation of S (KSA Mixing):</strong> Use <code>T</code> to produce the initial pseudo-random permutation of <code>S</code>. Starting with <code>j = 0</code>, iterate through each index <code>i</code> from 0 to 255, compute the target swap index <code>j</code>, and swap the elements:
+                                        <pre><code>j = 0;
+For i = 0 to 255 do:
+    j = (j + S[i] + T[i]) mod 256;
+    Swap(S[i], S[j]);</code></pre>
+                                        Once complete, the secret key <code>K</code> and temporary array <code>T</code> are discarded; all subsequent operations rely exclusively on the permuted state <code>S</code>.
+                                    </li>
+                                </ul>
+                            </li>
+                            <li>
+                                <strong>Calculate the encryption key (Keystream Generation via PRGA):</strong>
+                                <p>Using the Pseudo-Random Generation Algorithm (PRGA), generate a continuous stream of pseudo-random key bytes <code>k</code> matching the length of the message:</p>
+                                <ul>
+                                    <li>Initialize pointers <code>i = 0</code> and <code>j = 0</code>.</li>
+                                    <li>For each output byte needed:
+                                        <ol type="a">
+                                            <li>Increment pointer <code>i</code>: <code>i = (i + 1) mod 256</code></li>
+                                            <li>Advance pointer <code>j</code> by adding the state value: <code>j = (j + S[i]) mod 256</code></li>
+                                            <li>Swap <code>S[i]</code> and <code>S[j]</code> to continuously evolve the state array</li>
+                                            <li>Calculate the lookup index <code>t</code>: <code>t = (S[i] + S[j]) mod 256</code></li>
+                                            <li>Extract the keystream byte: <code>k = S[t]</code></li>
+                                        </ol>
+                                    </li>
+                                </ul>
+                            </li>
+                            <li>
+                                <strong>Encrypt your message with the key:</strong>
+                                <p>To encrypt the plaintext message, each plaintext byte <code>P[m]</code> is combined with its corresponding keystream byte <code>k[m]</code> using the bitwise Exclusive-OR (XOR) operation:</p>
+                                <pre><code>Ciphertext[m] = Plaintext[m] XOR k[m]</code></pre>
+                                <p>Since XOR is a symmetric (self-inverting) operation, decryption uses the identical keystream and procedure:</p>
+                                <pre><code>Plaintext[m] = Ciphertext[m] XOR k[m]</code></pre>
+                            </li>
+                        </ol>
                     </div>
                 </section>
 
@@ -152,7 +202,7 @@ while (true) {
 
                         <!-- RC4 Config Panel -->
                         <div class="card config-panel">
-                            <h3>1. Algorithm Configuration</h3>
+                            <h3>1. Algorithm Configuration (KSA Phase)</h3>
                             <div class="input-group">
                                 <label for="sim-key">Secret Key:</label>
                                 <input type="text" id="sim-key" placeholder="Enter key (e.g., Secret)" value="Key">
@@ -173,6 +223,12 @@ while (true) {
                         <!-- Visualization View -->
                         <div class="card visualization-panel">
                             <h3>State Array `S` Visualization</h3>
+                            <div class="grid-legend">
+                                <span class="legend-item"><span class="legend-box legend-i"></span> Pointer i</span>
+                                <span class="legend-item"><span class="legend-box legend-j"></span> Pointer j</span>
+                                <span class="legend-item"><span class="legend-box legend-swap"></span> Swapped</span>
+                                <span class="legend-item"><span class="legend-box legend-t"></span> Keystream Lookup t</span>
+                            </div>
                             <div id="state-grid" class="state-grid">
                                 <!-- JS will populate 256 squares here -->
                             </div>
@@ -180,26 +236,103 @@ while (true) {
 
                         <!-- Data Processing Panel -->
                         <div class="card processing-panel" id="prga-panel" style="opacity: 0.5; pointer-events: none;">
-                            <h3>2. Encryption / Decryption (PRGA)</h3>
-                            <p class="helper-text">You must run KSA fully before performing encryption/decryption.</p>
+                            <h3>2. Keystream Generation & Encryption (PRGA Phase)</h3>
+                            <p class="helper-text">You must run KSA fully before generating keystream and encrypting/decrypting.</p>
+                            <!-- IO Panels -->
                             <div class="io-panels">
                                 <div class="input-panel">
                                     <label for="sim-plaintext">Input Text:</label>
-                                    <textarea id="sim-plaintext"
-                                        placeholder="Enter text to encrypt or decrypt"></textarea>
+                                    <textarea id="sim-plaintext" placeholder="Enter text to encrypt or decrypt">Hello</textarea>
                                 </div>
                                 <div class="output-panel">
-                                    <label for="sim-output">Output Check (Hex / Text):</label>
+                                    <label for="sim-output">Output (Hex / Text):</label>
                                     <textarea id="sim-output" readonly></textarea>
                                 </div>
                             </div>
+
+                            <!-- Keystream display -->
                             <div class="key-stream-view" id="keystream-view">
-                                <strong>Keystream Generated:</strong> <span class="monospaced"
-                                    id="generated-keystream">--</span>
+                                <span class="ks-label">Keystream (Hex):</span>
+                                <span class="monospaced" id="generated-keystream">--</span>
                             </div>
-                            <div class="button-group mt-3">
-                                <button id="btn-encrypt" class="btn primary-btn" disabled>Encrypt</button>
-                                <button id="btn-decrypt" class="btn secondary-btn" disabled>Decrypt (From Hex)</button>
+
+                            <!-- Action Buttons Toolbar -->
+                            <div class="prga-toolbar">
+                                <button id="btn-prga-step" class="btn prga-step-btn" disabled>
+                                    <span class="btn-icon">▶</span> Step PRGA
+                                </button>
+                                <button id="btn-encrypt" class="btn prga-encrypt-btn" disabled>
+                                    <span class="btn-icon">⚡</span> Encrypt All
+                                </button>
+                                <button id="btn-decrypt" class="btn prga-decrypt-btn" disabled>
+                                    <span class="btn-icon">🔓</span> Decrypt (Hex)
+                                </button>
+                                <button id="btn-prga-reset" class="btn prga-reset-btn" disabled>
+                                    <span class="btn-icon">↺</span> Reset
+                                </button>
+                            </div>
+
+                            <!-- Live Stat Cards -->
+                            <div class="prga-stats-panel" id="prga-step-info">
+                                <div class="prga-stats-header">
+                                    <span class="prga-stats-badge">LIVE</span>
+                                    <strong>PRGA Step Calculation</strong>
+                                </div>
+                                <div class="prga-stat-cards">
+                                    <div class="prga-stat-card card-byte">
+                                        <div class="stat-label">Current Byte</div>
+                                        <div class="stat-value" id="prga-byte-idx">—</div>
+                                    </div>
+                                    <div class="prga-stat-card card-i">
+                                        <div class="stat-label">Pointer i</div>
+                                        <div class="stat-value" id="prga-val-i">0</div>
+                                    </div>
+                                    <div class="prga-stat-card card-j">
+                                        <div class="stat-label">Pointer j</div>
+                                        <div class="stat-value" id="prga-val-j">0</div>
+                                    </div>
+                                    <div class="prga-stat-card card-t">
+                                        <div class="stat-label">Lookup Index t</div>
+                                        <div class="stat-value" id="prga-val-t">—</div>
+                                    </div>
+                                    <div class="prga-stat-card card-k">
+                                        <div class="stat-label">Keystream Byte k</div>
+                                        <div class="stat-value" id="prga-val-k">—</div>
+                                    </div>
+                                </div>
+                                <div class="step-math-formula" id="prga-math-formula">
+                                    Click <strong>"Step PRGA"</strong> to generate the keystream byte by byte and see each calculation.
+                                </div>
+                            </div>
+
+                            <!-- Step-by-Step Trace Table -->
+                            <div class="prga-table-section">
+                                <div class="prga-table-header">
+                                    <h4>Step-by-Step Keystream &amp; XOR Breakdown</h4>
+                                    <span class="table-badge">Each row = 1 keystream byte</span>
+                                </div>
+                                <div class="prga-table-wrapper">
+                                    <table class="prga-trace-table" id="prga-trace-table">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Input</th>
+                                                <th>i</th>
+                                                <th>j</th>
+                                                <th>Swap</th>
+                                                <th>t</th>
+                                                <th>k = S[t]</th>
+                                                <th>Input ⊕ k</th>
+                                                <th>Output</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="prga-trace-tbody">
+                                            <tr class="prga-table-empty">
+                                                <td colspan="9">No keystream generated yet — click <strong>Step PRGA</strong> or <strong>Encrypt All</strong>.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -210,7 +343,89 @@ while (true) {
                     <h2>Assessment</h2>
                     <div class="card quiz-card">
                         <div id="quiz-container">
-                            <!-- Quiz questions dynamically loaded by JS -->
+                            <!-- Question 1 -->
+                            <div class="quiz-question">
+                                <h4>1. During the second KSA iteration, suppose the value of i=1, value of j after first iteration=75 and S[1]=1. The secret key is : "key"(ascii values: k=75,e=101,y=121). Calculate the new value of j, then identify which elements will be swapped.</h4>
+                                <ul class="quiz-options">
+                                    <li><label><input type="radio" name="question0" value="0"> S[1] and S[75]</label></li>
+                                    <li><label><input type="radio" name="question0" value="1"> S[1] and S[177]</label></li>
+                                    <li><label><input type="radio" name="question0" value="2"> S[75] and S[177]</label></li>
+                                    <li><label><input type="radio" name="question0" value="3"> S[1] and S[2]</label></li>
+                                </ul>
+                                <div class="question-feedback hidden"></div>
+                            </div>
+
+                            <!-- Question 2 -->
+                            <div class="quiz-question">
+                                <h4>2. What is a major security flaw that affected the RC4 algorithm?</h4>
+                                <ul class="quiz-options">
+                                    <li><label><input type="radio" name="question1" value="0"> It relies on complex mathematical transformations.</label></li>
+                                    <li><label><input type="radio" name="question1" value="1"> Limited or biased key streams could lead to predictable output patterns.</label></li>
+                                    <li><label><input type="radio" name="question1" value="2"> The algorithm uses an excessively long key length.</label></li>
+                                    <li><label><input type="radio" name="question1" value="3"> The encryption process is too slow for practical use</label></li>
+                                </ul>
+                                <div class="question-feedback hidden"></div>
+                            </div>
+
+                            <!-- Question 3 -->
+                            <div class="quiz-question">
+                                <h4>3. In the KSA phase, how many iterations does the swap loop execute?</h4>
+                                <ul class="quiz-options">
+                                    <li><label><input type="radio" name="question2" value="0"> 64</label></li>
+                                    <li><label><input type="radio" name="question2" value="1"> 128</label></li>
+                                    <li><label><input type="radio" name="question2" value="2"> 256</label></li>
+                                    <li><label><input type="radio" name="question2" value="3"> It depends on the key length</label></li>
+                                </ul>
+                                <div class="question-feedback hidden"></div>
+                            </div>
+
+                            <!-- Question 4 -->
+                            <div class="quiz-question">
+                                <h4>4. What mathematical operation is used in RC4 to generate ciphertext from plaintext and keystream?</h4>
+                                <ul class="quiz-options">
+                                    <li><label><input type="radio" name="question3" value="0"> AND</label></li>
+                                    <li><label><input type="radio" name="question3" value="1"> OR</label></li>
+                                    <li><label><input type="radio" name="question3" value="2"> XOR</label></li>
+                                    <li><label><input type="radio" name="question3" value="3"> NOT</label></li>
+                                </ul>
+                                <div class="question-feedback hidden"></div>
+                            </div>
+
+                            <!-- Question 5 -->
+                            <div class="quiz-question">
+                                <h4>5. In which wireless protocol is RC4 most notoriously used?</h4>
+                                <ul class="quiz-options">
+                                    <li><label><input type="radio" name="question4" value="0"> WPA3</label></li>
+                                    <li><label><input type="radio" name="question4" value="1"> IPsec</label></li>
+                                    <li><label><input type="radio" name="question4" value="2"> WEP</label></li>
+                                    <li><label><input type="radio" name="question4" value="3"> SSH</label></li>
+                                </ul>
+                                <div class="question-feedback hidden"></div>
+                            </div>
+
+                            <!-- Question 6 -->
+                            <div class="quiz-question">
+                                <h4>6. What is the typical variable key length allowed by RC4?</h4>
+                                <ul class="quiz-options">
+                                    <li><label><input type="radio" name="question5" value="0"> Exactly 128 bytes</label></li>
+                                    <li><label><input type="radio" name="question5" value="1"> Fixed 256 bits</label></li>
+                                    <li><label><input type="radio" name="question5" value="2"> 1 to 256 bytes</label></li>
+                                    <li><label><input type="radio" name="question5" value="3"> Unlimited</label></li>
+                                </ul>
+                                <div class="question-feedback hidden"></div>
+                            </div>
+
+                            <!-- Question 7 -->
+                            <div class="quiz-question">
+                                <h4>7. In the KSA phase, the secondary array T is initialized using:</h4>
+                                <ul class="quiz-options">
+                                    <li><label><input type="radio" name="question6" value="0"> The keystream</label></li>
+                                    <li><label><input type="radio" name="question6" value="1"> The provided key</label></li>
+                                    <li><label><input type="radio" name="question6" value="2"> Random numbers</label></li>
+                                    <li><label><input type="radio" name="question6" value="3"> Only zeros</label></li>
+                                </ul>
+                                <div class="question-feedback hidden"></div>
+                            </div>
                         </div>
                         <button id="btn-submit-quiz" class="btn primary-btn mt-3">Submit Quiz</button>
                         <div id="quiz-result" class="quiz-result hidden"></div>
@@ -241,12 +456,10 @@ while (true) {
                                     procedure.</small>
                             </li>
                             <li>
-                                <strong>Baldwin, R. & Rivest, R.</strong> "The RC5, RC5-CBC, RC5-CBC-Pad, and RC5-CTS
-                                Algorithms." <em>IETF RFC 2040.</em><br>
-                                <a href="https://www.rfc-editor.org/rfc/rfc2040"
-                                    target="_blank">https://www.rfc-editor.org/rfc/rfc2040</a><br>
-                                <small>IETF official documentation on Rivest Cipher algorithms, providing standards
-                                    context for the RC family.</small>
+                                <strong>Stallings, W.</strong> "Cryptography and Network Security: Principles and Practice." <em>7th Edition, Pearson.</em><br>
+                                <a href="https://www.gniotips.in/pdf/ebook/2026/sem-4/cryptography-and-network-security-principles-and-practice-7th-edition-by-william-stallings.pdf"
+                                    target="_blank">https://www.gniotips.in/pdf/ebook/2026/sem-4/cryptography-and-network-security-principles-and-practice-7th-edition-by-william-stallings.pdf</a><br>
+                                <small>Foundational textbook covering stream cipher principles, RC4 algorithm design, state initialization, and keystream generation.</small>
                             </li>
                             <li>
                                 <strong>Harris, R. et al.</strong> "Test Vectors for the Stream Cipher RC4." <em>IETF
@@ -279,7 +492,7 @@ while (true) {
             </div>
         </main>
     </div>
-    <script src="script.js"></script>
+    <script src="script.js?v=4"></script>
 </body>
 
 </html>
