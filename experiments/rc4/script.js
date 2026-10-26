@@ -208,6 +208,8 @@ function resetPrga() {
         document.getElementById("btn-prga-reset").disabled = true;
     }
 
+    const outLabel = document.getElementById("output-label");
+    if (outLabel) outLabel.textContent = "Ciphertext (Letters A–P):";
     document.getElementById("generated-keystream").textContent = "--";
     document.getElementById("sim-output").value = "";
     document.getElementById("prga-byte-idx").textContent = "—";
@@ -219,11 +221,58 @@ function resetPrga() {
     document.getElementById("prga-trace-tbody").innerHTML = `<tr class="prga-table-empty"><td colspan="9">No keystream generated yet — click <strong>Step PRGA</strong> or <strong>Encrypt All</strong>.</td></tr>`;
 }
 
+// Hex to Letters conversion (0->A, 1->B, ..., 9->J, A->K, ..., F->P)
+function nibbleToLetter(nibble) {
+    return String.fromCharCode(65 + (nibble & 0x0F));
+}
+
+function byteToLetters(byte) {
+    const high = (byte >> 4) & 0x0F;
+    const low = byte & 0x0F;
+    return nibbleToLetter(high) + nibbleToLetter(low);
+}
+
+function parseCipherInput(text) {
+    // Remove '0x' prefixes, whitespace and non-alphanumeric chars
+    const clean = text.replace(/0x/gi, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    if (clean.length === 0 || clean.length % 2 !== 0) {
+        return null;
+    }
+
+    const isLetterEncoding = /^[A-P]+$/.test(clean);
+    const isHexEncoding = /^[0-9A-F]+$/.test(clean);
+
+    if (!isLetterEncoding && !isHexEncoding) {
+        return null;
+    }
+
+    const bytes = [];
+    if (isLetterEncoding) {
+        for (let i = 0; i < clean.length; i += 2) {
+            const high = clean.charCodeAt(i) - 65; // 'A'->0, 'P'->15
+            const low = clean.charCodeAt(i + 1) - 65;
+            bytes.push((high << 4) | low);
+        }
+    } else {
+        for (let i = 0; i < clean.length; i += 2) {
+            const val = parseInt(clean.substr(i, 2), 16);
+            if (isNaN(val)) return null;
+            bytes.push(val);
+        }
+    }
+    return bytes;
+}
+
 function preparePrgaInput(isDecrypt = false) {
     const rawText = document.getElementById("sim-plaintext").value;
     if (!rawText) {
         alert("Please enter input text in the Input Text area.");
         return false;
+    }
+
+    const outLabel = document.getElementById("output-label");
+    if (outLabel) {
+        outLabel.textContent = isDecrypt ? "Decrypted Plaintext:" : "Ciphertext (Letters A–P):";
     }
 
     if (prga_raw_text !== rawText || prga_is_decrypt !== isDecrypt || prga_input_bytes.length === 0) {
@@ -238,19 +287,12 @@ function preparePrgaInput(isDecrypt = false) {
         prga_input_bytes = [];
 
         if (isDecrypt) {
-            let cleanHex = rawText.replace(/\s+/g, '');
-            if (cleanHex.length === 0 || cleanHex.length % 2 !== 0) {
-                alert("For Decrypt (From Hex), please provide an even number of hex characters (e.g., '1B 2C 3D').");
+            const parsed = parseCipherInput(rawText);
+            if (!parsed || parsed.length === 0) {
+                alert("For Decrypt, please provide letter ciphertext (e.g. 'KD PK BL ON NI') or hex characters (e.g. 'A3 FA 1B'). Must be an even number of characters from A-P or 0-F.");
                 return false;
             }
-            for (let c = 0; c < cleanHex.length; c += 2) {
-                let parsed = parseInt(cleanHex.substr(c, 2), 16);
-                if (isNaN(parsed)) {
-                    alert("Invalid hex character detected.");
-                    return false;
-                }
-                prga_input_bytes.push(parsed);
-            }
+            prga_input_bytes = parsed;
         } else {
             for (let c = 0; c < rawText.length; c++) {
                 prga_input_bytes.push(rawText.charCodeAt(c));
@@ -319,17 +361,32 @@ function doPrgaStep() {
 
     // Formatting strings
     let inByteHex = "0x" + ('0' + inByte.toString(16).toUpperCase()).slice(-2);
-    let inChar = (!prga_is_decrypt && inByte >= 32 && inByte <= 126) ? `'${String.fromCharCode(inByte)}'` : inByteHex;
+    let inLetters = byteToLetters(inByte);
+    let inCharDisplay = prga_is_decrypt 
+        ? `${inLetters} <small>(${inByteHex})</small>`
+        : ((inByte >= 32 && inByte <= 126) ? `'${String.fromCharCode(inByte)}'` : inByteHex);
+    let inCharSimple = prga_is_decrypt ? inLetters : ((inByte >= 32 && inByte <= 126) ? `'${String.fromCharCode(inByte)}'` : inByteHex);
+
     let kHex = "0x" + ('0' + keystreamByte.toString(16).toUpperCase()).slice(-2);
     let outHex = "0x" + ('0' + outByte.toString(16).toUpperCase()).slice(-2);
-    let outChar = (prga_is_decrypt && outByte >= 32 && outByte <= 126) ? `'${String.fromCharCode(outByte)}'` : outHex;
+    let outLetters = byteToLetters(outByte);
+    let outChar = (outByte >= 32 && outByte <= 126) ? `'${String.fromCharCode(outByte)}'` : outHex;
+
+    // Output column display: letters A-P when encrypting, character when decrypting
+    let outDisplay = prga_is_decrypt 
+        ? `<strong>${outChar}</strong> <small>(${outHex})</small>`
+        : `<strong style="color: #2a9d8f;">${outLetters}</strong> <small>(${outHex})</small>`;
 
     // Update PRGA status cards
-    document.getElementById("prga-byte-idx").textContent = `Byte ${k_idx + 1} of ${prga_input_bytes.length} (${inChar})`;
+    document.getElementById("prga-byte-idx").textContent = `Byte ${k_idx + 1} of ${prga_input_bytes.length} (${inCharSimple})`;
     document.getElementById("prga-val-i").textContent = `${prga_i} (S[i]=${prga_S[prga_i]})`;
     document.getElementById("prga-val-j").textContent = `${prga_j} (S[j]=${prga_S[prga_j]})`;
     document.getElementById("prga-val-t").textContent = `${t} (S[${t}]=${keystreamByte})`;
     document.getElementById("prga-val-k").textContent = `${kHex} (Dec: ${keystreamByte})`;
+
+    let xorDetail = prga_is_decrypt
+        ? `${inLetters} (${inByteHex}) ⊕ ${kHex} = <strong>${outChar}</strong> (${outHex})`
+        : `${inCharSimple} (${inByteHex}) ⊕ ${kHex} = <strong>${outLetters}</strong> (${outHex})`;
 
     document.getElementById("prga-math-formula").innerHTML =
         `<strong>Byte ${k_idx + 1} Computation:</strong><br>` +
@@ -338,7 +395,7 @@ function doPrgaStep() {
         `• State Swap: S[${prga_i}] ↔ S[${prga_j}] (new S[${prga_i}]=${prga_S[prga_i]}, S[${prga_j}]=${prga_S[prga_j]})<br>` +
         `• Lookup index: t = (${prga_S[prga_i]} + ${prga_S[prga_j]}) mod 256 = <strong>${t}</strong><br>` +
         `• Keystream Byte: k = S[${t}] = <strong>${kHex}</strong> (${keystreamByte})<br>` +
-        `• XOR Output: ${inChar} (${inByteHex}) ⊕ ${kHex} = <strong>${outHex}</strong> (${outChar})`;
+        `• XOR Output: ${xorDetail}`;
 
     // Append to step table
     let tbody = document.getElementById("prga-trace-tbody");
@@ -353,14 +410,14 @@ function doPrgaStep() {
     row.className = "active-step-row";
     row.innerHTML = `
         <td>${k_idx + 1}</td>
-        <td>${inChar} <small>(${inByteHex})</small></td>
+        <td>${inCharDisplay}</td>
         <td>${prga_i}</td>
         <td>${prga_j}</td>
         <td>S[${prga_i}] ↔ S[${prga_j}]</td>
         <td>${t}</td>
         <td><strong style="color: #2a9d8f;">${kHex}</strong> <small>(${keystreamByte})</small></td>
         <td>${inByteHex} ⊕ ${kHex}</td>
-        <td><strong>${outHex}</strong> <small>(${outChar})</small></td>
+        <td>${outDisplay}</td>
     `;
     tbody.appendChild(row);
     row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -369,12 +426,12 @@ function doPrgaStep() {
     let keystreamHexStr = prga_keystream_bytes.map(b => ('0' + b.toString(16).toUpperCase()).slice(-2)).join(" ");
     document.getElementById("generated-keystream").textContent = keystreamHexStr;
 
-    // Update Output
+    // Update Output: strictly letters A to Z (A-P) when encrypting
     let outputStr = "";
     if (prga_is_decrypt) {
         outputStr = prga_output_bytes.map(b => String.fromCharCode(b)).join("");
     } else {
-        outputStr = prga_output_bytes.map(b => ('0' + b.toString(16).toUpperCase()).slice(-2)).join(" ");
+        outputStr = prga_output_bytes.map(b => byteToLetters(b)).join(" ");
     }
     document.getElementById("sim-output").value = outputStr;
 

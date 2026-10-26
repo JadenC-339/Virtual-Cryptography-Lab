@@ -3,10 +3,13 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RC4 Key Scheduling Algorithm</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=letters_v5">
 </head>
 
 <body>
@@ -144,53 +147,12 @@ while (true) {
                     <div class="card">
                         <h3>Procedure:</h3>
                         <ol class="procedure-list">
-                            <li>
-                                <strong>Select the key K:</strong>
-                                <p>Choose a secret key <code>K</code> of variable length (typically between 1 and 256 bytes, or 8 to 2048 bits). The characters of the key are converted into their numeric byte/ASCII representation, and its length in bytes is recorded as <code>k-len</code>.</p>
-                            </li>
-                            <li>
-                                <strong>Fill the registers S and T:</strong>
-                                <ul>
-                                    <li><strong>Initialize State Array S:</strong> Allocate a 256-byte state vector <code>S</code> and initialize each entry from 0 to 255 in strictly ascending order:
-                                        <pre><code>For i = 0 to 255 do:
-    S[i] = i</code></pre>
-                                    </li>
-                                    <li><strong>Fill Temporary Register T:</strong> Create a secondary 256-byte vector <code>T</code>. If key length <code>k-len = 256</code>, transfer <code>K</code> directly to <code>T</code>. Otherwise, populate <code>T</code> by cyclically repeating the key bytes:
-                                        <pre><code>For i = 0 to 255 do:
-    T[i] = K[i mod k-len]</code></pre>
-                                    </li>
-                                    <li><strong>Initial Permutation of S (KSA Mixing):</strong> Use <code>T</code> to produce the initial pseudo-random permutation of <code>S</code>. Starting with <code>j = 0</code>, iterate through each index <code>i</code> from 0 to 255, compute the target swap index <code>j</code>, and swap the elements:
-                                        <pre><code>j = 0;
-For i = 0 to 255 do:
-    j = (j + S[i] + T[i]) mod 256;
-    Swap(S[i], S[j]);</code></pre>
-                                        Once complete, the secret key <code>K</code> and temporary array <code>T</code> are discarded; all subsequent operations rely exclusively on the permuted state <code>S</code>.
-                                    </li>
-                                </ul>
-                            </li>
-                            <li>
-                                <strong>Calculate the encryption key (Keystream Generation via PRGA):</strong>
-                                <p>Using the Pseudo-Random Generation Algorithm (PRGA), generate a continuous stream of pseudo-random key bytes <code>k</code> matching the length of the message:</p>
-                                <ul>
-                                    <li>Initialize pointers <code>i = 0</code> and <code>j = 0</code>.</li>
-                                    <li>For each output byte needed:
-                                        <ol type="a">
-                                            <li>Increment pointer <code>i</code>: <code>i = (i + 1) mod 256</code></li>
-                                            <li>Advance pointer <code>j</code> by adding the state value: <code>j = (j + S[i]) mod 256</code></li>
-                                            <li>Swap <code>S[i]</code> and <code>S[j]</code> to continuously evolve the state array</li>
-                                            <li>Calculate the lookup index <code>t</code>: <code>t = (S[i] + S[j]) mod 256</code></li>
-                                            <li>Extract the keystream byte: <code>k = S[t]</code></li>
-                                        </ol>
-                                    </li>
-                                </ul>
-                            </li>
-                            <li>
-                                <strong>Encrypt your message with the key:</strong>
-                                <p>To encrypt the plaintext message, each plaintext byte <code>P[m]</code> is combined with its corresponding keystream byte <code>k[m]</code> using the bitwise Exclusive-OR (XOR) operation:</p>
-                                <pre><code>Ciphertext[m] = Plaintext[m] XOR k[m]</code></pre>
-                                <p>Since XOR is a symmetric (self-inverting) operation, decryption uses the identical keystream and procedure:</p>
-                                <pre><code>Plaintext[m] = Ciphertext[m] XOR k[m]</code></pre>
-                            </li>
+                            <li>Enter your secret key.</li>
+                            <li>Run KSA instantly or step by step. The values for i and j after each step are displayed. Corresponding step by step visualisation can also be viewed.</li>
+                            <li>View step by step swapping and visualisation with the help of the state array visualisation.</li>
+                            <li>After visualisation and generation of the final state array, enter input text for encryption and press "encrypt all".</li>
+                            <li>Keystream is generated and encrypted text output is provided in the decrypted plaintext section.</li>
+                            <li>Decrypt any text using "Decrypt" button.</li>
                         </ol>
                     </div>
                 </section>
@@ -242,12 +204,17 @@ For i = 0 to 255 do:
                             <div class="io-panels">
                                 <div class="input-panel">
                                     <label for="sim-plaintext">Input Text:</label>
-                                    <textarea id="sim-plaintext" placeholder="Enter text to encrypt or decrypt">Hello</textarea>
+                                    <textarea id="sim-plaintext" placeholder="Enter plaintext to encrypt or letter ciphertext (A-P) to decrypt">Hello</textarea>
                                 </div>
                                 <div class="output-panel">
-                                    <label for="sim-output">Output (Hex / Text):</label>
-                                    <textarea id="sim-output" readonly></textarea>
+                                    <label for="sim-output" id="output-label">Ciphertext (Letters A–P):</label>
+                                    <textarea id="sim-output" readonly placeholder="Encrypted letters will appear here..."></textarea>
                                 </div>
+                            </div>
+
+                            <div class="letter-mapping-note">
+                                <span class="note-icon">🔤</span>
+                                <span><strong>Hex to Letter Mapping (0–F → A–P):</strong> 0=A, 1=B, 2=C, 3=D, 4=E, 5=F, 6=G, 7=H, 8=I, 9=J, A=K, B=L, C=M, D=N, E=O, F=P</span>
                             </div>
 
                             <!-- Keystream display -->
@@ -259,13 +226,13 @@ For i = 0 to 255 do:
                             <!-- Action Buttons Toolbar -->
                             <div class="prga-toolbar">
                                 <button id="btn-prga-step" class="btn prga-step-btn" disabled>
-                                    <span class="btn-icon">▶</span> Step PRGA
+                                     <span class="btn-icon">▶</span> Step PRGA
                                 </button>
                                 <button id="btn-encrypt" class="btn prga-encrypt-btn" disabled>
                                     <span class="btn-icon">⚡</span> Encrypt All
                                 </button>
                                 <button id="btn-decrypt" class="btn prga-decrypt-btn" disabled>
-                                    <span class="btn-icon">🔓</span> Decrypt (Hex)
+                                    <span class="btn-icon">🔓</span> Decrypt (Letters / Hex)
                                 </button>
                                 <button id="btn-prga-reset" class="btn prga-reset-btn" disabled>
                                     <span class="btn-icon">↺</span> Reset
@@ -492,7 +459,7 @@ For i = 0 to 255 do:
             </div>
         </main>
     </div>
-    <script src="script.js?v=4"></script>
+    <script src="script.js?v=letters_v5"></script>
 </body>
 
 </html>
